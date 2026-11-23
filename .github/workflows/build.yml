@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -25,9 +27,7 @@ jobs:
           mkdir -p app/src/main/java/com/detonacion/radioencoder
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
-          # Mover los .kt a su lugar
           for f in *.kt; do [ -f "$f" ] && mv "$f" app/src/main/java/com/detonacion/radioencoder/ || true; done
-          # Crear app/build.gradle si no existe
           if [ ! -f app/build.gradle ]; then
           cat > app/build.gradle <<'EOF'
           plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }
@@ -54,7 +54,6 @@ jobs:
           }
           EOF
           fi
-          # Crear Manifest si no existe
           if [ ! -f app/src/main/AndroidManifest.xml ]; then
           cat > app/src/main/AndroidManifest.xml <<'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -72,7 +71,6 @@ jobs:
           </manifest>
           EOF
           fi
-          # Crear build.gradle raiz si no existe
           if [ ! -f build.gradle ]; then
           cat > build.gradle <<'EOF'
           plugins { id 'com.android.application' version '8.2.2' apply false; id 'org.jetbrains.kotlin.android' version '1.9.22' apply false }
@@ -87,3 +85,9 @@ jobs:
         with:
           name: RadioEncoder-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+      - name: Crear Release con APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0-${{ github.run_number }}
+          name: RadioEncoder v1.0
+          files: app/build/outputs/apk/debug/app-debug.apk
