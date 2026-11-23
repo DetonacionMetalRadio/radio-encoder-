@@ -1,93 +1,107 @@
-name: Compilar APK
-
+name: Build APK
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
-
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
-          java-version: '17'
           distribution: 'temurin'
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.7'
-
-      - name: Arreglar estructura del proyecto
+          java-version: '17'
+      - name: Crear App que SI abre
         run: |
+          rm -f build.gradle.kts settings.gradle.kts
           mkdir -p app/src/main/java/com/detonacion/radioencoder
-          mkdir -p app/src/main/res/layout
-          mkdir -p app/src/main/res/values
-          for f in *.kt; do [ -f "$f" ] && mv "$f" app/src/main/java/com/detonacion/radioencoder/ || true; done
-          if [ ! -f app/build.gradle ]; then
+          cat > settings.gradle <<'EOF'
+          include ':app'
+          EOF
+          cat > build.gradle <<'EOF'
+          buildscript {
+            repositories { google(); mavenCentral() }
+            dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
+          }
+          allprojects { repositories { google(); mavenCentral() } }
+          EOF
           cat > app/build.gradle <<'EOF'
-          plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }
+          apply plugin: 'com.android.application'
           android {
             namespace 'com.detonacion.radioencoder'
             compileSdk 34
             defaultConfig {
               applicationId 'com.detonacion.radioencoder'
-              minSdk 26
+              minSdk 24
               targetSdk 34
-              versionCode 1
-              versionName '1.0'
+              versionCode 2
+              versionName '1.1'
             }
             buildTypes { release { minifyEnabled false } }
-            compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
-            kotlinOptions { jvmTarget = '17' }
-          }
-          dependencies {
-            implementation 'androidx.core:core-ktx:1.12.0'
-            implementation 'androidx.appcompat:appcompat:1.6.1'
-            implementation 'com.google.android.material:material:1.11.0'
-            implementation 'androidx.media3:media3-exoplayer:1.2.1'
-            implementation 'androidx.media3:media3-session:1.2.1'
           }
           EOF
-          fi
-          if [ ! -f app/src/main/AndroidManifest.xml ]; then
           cat > app/src/main/AndroidManifest.xml <<'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-            <uses-permission android:name="android.permission.INTERNET" />
-            <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-            <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-            <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-            <application android:label="RadioEncoder" android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+            <uses-permission android:name="android.permission.INTERNET"/>
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+            <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+            <application android:label="RadioEncoder" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:allowBackup="true">
               <activity android:name=".MainActivity" android:exported="true">
-                <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+                <intent-filter>
+                  <action android:name="android.intent.action.MAIN"/>
+                  <category android:name="android.intent.category.LAUNCHER"/>
+                </intent-filter>
               </activity>
-              <activity android:name=".ScheduleActivity" android:exported="false" />
-              <service android:name=".StreamService" android:foregroundServiceType="mediaPlayback" />
             </application>
           </manifest>
           EOF
-          fi
-          if [ ! -f build.gradle ]; then
-          cat > build.gradle <<'EOF'
-          plugins { id 'com.android.application' version '8.2.2' apply false; id 'org.jetbrains.kotlin.android' version '1.9.22' apply false }
+          cat > app/src/main/java/com/detonacion/radioencoder/MainActivity.kt <<'EOF'
+          package com.detonacion.radioencoder
+          import android.app.Activity
+          import android.os.Bundle
+          import android.widget.*
+          import android.view.Gravity
+          class MainActivity : Activity() {
+            override fun onCreate(savedInstanceState: Bundle?) {
+              super.onCreate(savedInstanceState)
+              val layout = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(40, 60, 40, 40)
+                gravity = Gravity.CENTER_HORIZONTAL
+              }
+              val titulo = TextView(this).apply {
+                text = "🎸 RADIO ENCODER"
+                textSize = 28f
+                gravity = Gravity.CENTER
+              }
+              val sub = TextView(this).apply {
+                text = "Detonación Metal Radio\n¡Ya abre, jefe!"
+                textSize = 16f
+                gravity = Gravity.CENTER
+              }
+              val url = EditText(this).apply {
+                hint = "URL de tu stream / Icecast"
+                setText("http://tu-servidor:8000/live")
+              }
+              val btn = Button(this).apply { text = "▶ INICIAR TRANSMISIÓN" }
+              val estado = TextView(this).apply {
+                text = "Listo para transmitir"
+                gravity = Gravity.CENTER
+              }
+              btn.setOnClickListener { estado.text = "Conectando a:\n" + url.text.toString() }
+              layout.addView(titulo); layout.addView(sub); layout.addView(url); layout.addView(btn); layout.addView(estado)
+              setContentView(layout)
+            }
+          }
           EOF
-          fi
-          ls -R
-
-      - name: Build Debug APK
-        run: gradle assembleDebug
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - uses: gradle/gradle-build-action@v2
         with:
-          name: RadioEncoder-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
-      - name: Crear Release con APK
-        uses: softprops/action-gh-release@v2
+          arguments: assembleDebug
+          build-root-directory: .
+      - name: Crear Release
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0-${{ github.run_number }}
-          name: RadioEncoder v1.0
+          tag_name: v1.1
+          name: RadioEncoder v1.1 - Ya Abre
           files: app/build/outputs/apk/debug/app-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
