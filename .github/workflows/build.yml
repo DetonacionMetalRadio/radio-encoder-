@@ -80,28 +80,4 @@ jobs:
               }
               val url = EditText(this).apply {
                 hint = "URL de tu stream / Icecast"
-                setText("http://tu-servidor:8000/live")
-              }
-              val btn = Button(this).apply { text = "▶ INICIAR TRANSMISIÓN" }
-              val estado = TextView(this).apply {
-                text = "Listo para transmitir"
-                gravity = Gravity.CENTER
-              }
-              btn.setOnClickListener { estado.text = "Conectando a:\n" + url.text.toString() }
-              layout.addView(titulo); layout.addView(sub); layout.addView(url); layout.addView(btn); layout.addView(estado)
-              setContentView(layout)
-            }
-          }
-          EOF
-      - uses: gradle/gradle-build-action@v2
-        with:
-          arguments: assembleDebug
-          build-root-directory: .
-      - name: Crear Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v1.1
-          name: RadioEncoder v1.1 - Ya Abre
-          files: app/build/outputs/apk/debug/app-debug.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+               
