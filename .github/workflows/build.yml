@@ -17,6 +17,67 @@ jobs:
           distribution: 'temurin'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+
+      - name: Arreglar estructura del proyecto
+        run: |
+          mkdir -p app/src/main/java/com/detonacion/radioencoder
+          mkdir -p app/src/main/res/layout
+          mkdir -p app/src/main/res/values
+          # Mover los .kt a su lugar
+          for f in *.kt; do [ -f "$f" ] && mv "$f" app/src/main/java/com/detonacion/radioencoder/ || true; done
+          # Crear app/build.gradle si no existe
+          if [ ! -f app/build.gradle ]; then
+          cat > app/build.gradle <<'EOF'
+          plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }
+          android {
+            namespace 'com.detonacion.radioencoder'
+            compileSdk 34
+            defaultConfig {
+              applicationId 'com.detonacion.radioencoder'
+              minSdk 26
+              targetSdk 34
+              versionCode 1
+              versionName '1.0'
+            }
+            buildTypes { release { minifyEnabled false } }
+            compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+            kotlinOptions { jvmTarget = '17' }
+          }
+          dependencies {
+            implementation 'androidx.core:core-ktx:1.12.0'
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+            implementation 'com.google.android.material:material:1.11.0'
+            implementation 'androidx.media3:media3-exoplayer:1.2.1'
+            implementation 'androidx.media3:media3-session:1.2.1'
+          }
+          EOF
+          fi
+          # Crear Manifest si no existe
+          if [ ! -f app/src/main/AndroidManifest.xml ]; then
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.INTERNET" />
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+            <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+            <application android:label="RadioEncoder" android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+              <activity android:name=".MainActivity" android:exported="true">
+                <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+              </activity>
+              <activity android:name=".ScheduleActivity" android:exported="false" />
+              <service android:name=".StreamService" android:foregroundServiceType="mediaPlayback" />
+            </application>
+          </manifest>
+          EOF
+          fi
+          # Crear build.gradle raiz si no existe
+          if [ ! -f build.gradle ]; then
+          cat > build.gradle <<'EOF'
+          plugins { id 'com.android.application' version '8.2.2' apply false; id 'org.jetbrains.kotlin.android' version '1.9.22' apply false }
+          EOF
+          fi
+          ls -R
+
       - name: Build Debug APK
         run: gradle assembleDebug
       - name: Upload APK
