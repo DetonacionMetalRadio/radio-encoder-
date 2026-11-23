@@ -10,74 +10,25 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Crear App que SI abre
+      - name: Crear App
         run: |
           rm -f build.gradle.kts settings.gradle.kts
           mkdir -p app/src/main/java/com/detonacion/radioencoder
-          cat > settings.gradle <<'EOF'
-          include ':app'
-          EOF
-          cat > build.gradle <<'EOF'
-          buildscript {
-            repositories { google(); mavenCentral() }
-            dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
-          }
-          allprojects { repositories { google(); mavenCentral() } }
-          EOF
-          cat > app/build.gradle <<'EOF'
-          apply plugin: 'com.android.application'
-          android {
-            namespace 'com.detonacion.radioencoder'
-            compileSdk 34
-            defaultConfig {
-              applicationId 'com.detonacion.radioencoder'
-              minSdk 24
-              targetSdk 34
-              versionCode 2
-              versionName '1.1'
-            }
-            buildTypes { release { minifyEnabled false } }
-          }
-          EOF
-          cat > app/src/main/AndroidManifest.xml <<'EOF'
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-            <uses-permission android:name="android.permission.INTERNET"/>
-            <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-            <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-            <application android:label="RadioEncoder" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:allowBackup="true">
-              <activity android:name=".MainActivity" android:exported="true">
-                <intent-filter>
-                  <action android:name="android.intent.action.MAIN"/>
-                  <category android:name="android.intent.category.LAUNCHER"/>
-                </intent-filter>
-              </activity>
-            </application>
-          </manifest>
-          EOF
-          cat > app/src/main/java/com/detonacion/radioencoder/MainActivity.kt <<'EOF'
-          package com.detonacion.radioencoder
-          import android.app.Activity
-          import android.os.Bundle
-          import android.widget.*
-          import android.view.Gravity
-          class MainActivity : Activity() {
-            override fun onCreate(savedInstanceState: Bundle?) {
-              super.onCreate(savedInstanceState)
-              val layout = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(40, 60, 40, 40)
-                gravity = Gravity.CENTER_HORIZONTAL
-              }
-              val titulo = TextView(this).apply {
-                text = "🎸 RADIO ENCODER"
-                textSize = 28f
-                gravity = Gravity.CENTER
-              }
-              val sub = TextView(this).apply {
-                text = "Detonación Metal Radio\n¡Ya abre, jefe!"
-                textSize = 16f
-                gravity = Gravity.CENTER
-              }
-              val url = EditText(this).apply {
-                hint = "URL de tu stream / Icecast"
-               
+          echo "include ':app'" > settings.gradle
+          printf "buildscript{repositories{google();mavenCentral()}dependencies{classpath 'com.android.tools.build:gradle:8.2.2'}}\nallprojects{repositories{google();mavenCentral()}}\n" > build.gradle
+          printf "apply plugin:'com.android.application'\nandroid{namespace 'com.detonacion.radioencoder'\ncompileSdk 34\ndefaultConfig{applicationId 'com.detonacion.radioencoder'\nminSdk 24\ntargetSdk 34\nversionCode 2\nversionName '1.1'}}\n" > app/build.gradle
+          printf "<manifest xmlns:android='http://schemas.android.com/apk/res/android'><uses-permission android:name='android.permission.INTERNET'/><application android:label='RadioEncoder' android:theme='@android:style/Theme.Material.Light.NoActionBar'><activity android:name='.MainActivity' android:exported='true'><intent-filter><action android:name='android.intent.action.MAIN'/><category android:name='android.intent.category.LAUNCHER'/></intent-filter></activity></application></manifest>" > app/src/main/AndroidManifest.xml
+          printf "package com.detonacion.radioencoder\nimport android.app.Activity\nimport android.os.Bundle\nimport android.widget.TextView\nclass MainActivity:Activity(){override fun onCreate(s:Bundle?){super.onCreate(s);val t=TextView(this);t.text='RADIO ENCODER\nDetonacion Metal Radio\nYa abre jefe!';t.textSize=24f;setContentView(t)}}\n" > app/src/main/java/com/detonacion/radioencoder/MainActivity.kt
+      - uses: gradle/gradle-build-action@v2
+        with:
+          arguments: assembleDebug
+          build-root-directory: .
+          gradle-version: '8.2.2'
+      - name: Crear Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v1.2
+          name: RadioEncoder v1.2 - Ya Abre
+          files: app/build/outputs/apk/debug/app-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
